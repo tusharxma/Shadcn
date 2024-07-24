@@ -5,22 +5,23 @@ interface User {
   id: string;
   name: string;
   email: string;
-  'phone number': string;
+  phone: number;
 }
 
 interface StoreState {
   isUserLoggedin: boolean;
   setIsLogin: (value: boolean) => void;
-  allUsers: User[];
-  addUser: (user: User) => void;
+  openModel: string;
+  // userId :  number;
+  setOpenModel: (value: string) => void;
 }
 
 const useStore = create<StoreState>((set) => ({
   isUserLoggedin: false,
   setIsLogin: (value: boolean) => set({ isUserLoggedin: value }),
-  allUsers: [],
-  addUser: (user: User) =>
-    set((state) => ({ allUsers: [...state.allUsers, user] }))
+  openModel: '',
+  // userId: 0,
+  setOpenModel: (value: string) => set({ openModel: value })
 }));
 
 export default useStore;

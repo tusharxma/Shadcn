@@ -13,7 +13,6 @@ interface ProductsClientProps {
 }
 
 export const UserClient: React.FC<ProductsClientProps> = ({ data }) => {
-  console.log('🚀 ~ data:', data);
   const router = useRouter();
 
   return (
@@ -31,6 +30,7 @@ export const UserClient: React.FC<ProductsClientProps> = ({ data }) => {
         </Button>
       </div>
       <Separator />
+      {/* <ProductsClientProps>       */}
       <DataTable searchKey="name" columns={columns} data={data} />
     </>
   );

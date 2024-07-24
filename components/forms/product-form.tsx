@@ -7,6 +7,8 @@ import { Trash } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { collection, addDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import {
   Form,
   FormControl,
@@ -29,30 +31,28 @@ import { Checkbox } from '@/components/ui/checkbox';
 // import FileUpload from "@/components/FileUpload";
 import { useToast } from '../ui/use-toast';
 import FileUpload from '../file-upload';
-const ImgSchema = z.object({
-  fileName: z.string(),
-  name: z.string(),
-  fileSize: z.number(),
-  size: z.number(),
-  fileKey: z.string(),
-  key: z.string(),
-  fileUrl: z.string(),
-  url: z.string()
-});
-export const IMG_MAX_LIMIT = 3;
+import { db } from '@/utils/firebase';
+
 const formSchema = z.object({
   name: z
     .string()
-    .min(3, { message: 'Product Name must be at least 3 characters' }),
-  imgUrl: z
-    .array(ImgSchema)
-    .max(IMG_MAX_LIMIT, { message: 'You can only add up to 3 images' })
-    .min(1, { message: 'At least one image must be added.' }),
-  description: z
+    .min(2, { message: 'Invalid name' })
+    .max(50, { message: 'Name length should not be more than 50' }),
+  email: z.string().email({ message: 'Email is not valid' }),
+  // .max(50, { message: 'Only 50 characters' })
+  // .min(1, { message: 'At least one image must be added.' }),
+  phone: z
     .string()
-    .min(3, { message: 'Product description must be at least 3 characters' }),
-  price: z.coerce.number(),
-  category: z.string().min(1, { message: 'Please select a category' })
+    .min(10, { message: 'Must be a valid mobile number' })
+    .refine(
+      (value) => {
+        const number = parseFloat(value);
+        return !isNaN(number) && number.toString().length === 10;
+      },
+      {
+        message: 'Must be a valid mobile number'
+      }
+    )
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -72,8 +72,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
-  const title = initialData ? 'Edit product' : 'Create product';
-  const description = initialData ? 'Edit a product.' : 'Add a new product';
+  const title = 'Create User';
+  const description = 'Add a new user';
   const toastMessage = initialData ? 'Product updated.' : 'Product created.';
   const action = initialData ? 'Save changes' : 'Create';
 
@@ -81,10 +81,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     ? initialData
     : {
         name: '',
-        description: '',
-        price: 0,
-        imgUrl: [],
-        category: ''
+        email: '',
+        phone: null
       };
 
   const form = useForm<ProductFormValues>({
@@ -94,25 +92,29 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   const onSubmit = async (data: ProductFormValues) => {
     try {
+      const apiData = {
+        name: data.name,
+        email: data.email,
+        phone: Number(data.phone)
+      };
       setLoading(true);
-      if (initialData) {
-        // await axios.post(`/api/products/edit-product/${initialData._id}`, data);
-      } else {
-        // const res = await axios.post(`/api/products/create-product`, data);
-        // console.log("product", res);
-      }
+
+      const docRef = await addDoc(collection(db, 'users'), apiData);
+      console.log('product', docRef);
+
       router.refresh();
-      router.push(`/dashboard/products`);
+      router.push(`/dashboard/user`);
       toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: 'There was a problem with your request.'
+        variant: 'default',
+        title: 'Hurrah!!!',
+        description: 'User created successfully!!'
       });
+      router.refresh();
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
-        description: 'There was a problem with your request.'
+        description: 'Please try again'
       });
     } finally {
       setLoading(false);
@@ -131,9 +133,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       setOpen(false);
     }
   };
-
-  const triggerImgUrlValidation = () => form.trigger('imgUrl');
-
   return (
     <>
       {/* <AlertModal
@@ -161,7 +160,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           onSubmit={form.handleSubmit(onSubmit)}
           className="w-full space-y-8"
         >
-          <FormField
+          {/* <FormField
             control={form.control}
             name="imgUrl"
             render={({ field }) => (
@@ -177,7 +176,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
           <div className="gap-8 md:grid md:grid-cols-3">
             <FormField
               control={form.control}
@@ -188,7 +187,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   <FormControl>
                     <Input
                       disabled={loading}
-                      placeholder="Product name"
+                      placeholder="Enter your name..."
                       {...field}
                     />
                   </FormControl>
@@ -198,14 +197,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             />
             <FormField
               control={form.control}
-              name="description"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input
                       disabled={loading}
-                      placeholder="Product description"
+                      placeholder="Enter your email..."
                       {...field}
                     />
                   </FormControl>
@@ -215,46 +214,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             />
             <FormField
               control={form.control}
-              name="price"
+              name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price</FormLabel>
+                  <FormLabel>Phone</FormLabel>
                   <FormControl>
-                    <Input type="number" disabled={loading} {...field} />
+                    <Input
+                      type="text"
+                      disabled={loading}
+                      {...field}
+                      placeholder="Enter your phone number"
+                    />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select
-                    disabled={loading}
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          defaultValue={field.value}
-                          placeholder="Select a category"
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {/* @ts-ignore  */}
-                      {categories.map((category) => (
-                        <SelectItem key={category._id} value={category._id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

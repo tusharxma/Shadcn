@@ -31,6 +31,9 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         onClose={() => setOpen(false)}
         onConfirm={onConfirm}
         loading={loading}
+        data={data}
+        as
+        User
       />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
